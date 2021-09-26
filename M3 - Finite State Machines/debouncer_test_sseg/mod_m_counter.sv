@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 08/29/2020 01:36:16 PM
+// Create Date: 09/24/2021 03:47:15 AM
 // Design Name: 
 // Module Name: mod_m_counter
 // Project Name: 
@@ -21,21 +21,24 @@
 
 
 module mod_m_counter
-    #(parameter M = 10)
+    #(parameter M = 50_000_000)
     (
         input logic clk, reset,
-        output logic [N - 1:0] q,
-        output logic max_tick
+        input [$clog2(M)-1:0] delay_input,                      // Input delay from synch_rom file
+        output logic delay_tick
     );
-        
-    localparam N = $clog2(M); // N is a constant representing number of necessary bits for the counter
     
+    // largest delay of 500ms
+    // assuming clk is 100 MHz (clock period of 10ns)
+    // 500ms / 10ns in ns = 50_000_000
+    localparam N = $clog2(50_000_000);                          // Use largest delay of 500ms to define our variable size
+
     // signal declaration
-    logic [N - 1:0] r_next, r_reg;
-    
+    logic [N-1:0] r_next, r_reg;
+        
     // body
     // [1] Register segment
-    always_ff @(posedge clk, posedge reset)
+    always_ff @(posedge clk or posedge reset)    
     begin
         if(reset)
             r_reg <= 0;
@@ -44,11 +47,9 @@ module mod_m_counter
     end
     
     // [2] next-state logic segment
-    assign r_next = (r_reg == (M - 1))? 0: r_reg + 1;
+    assign r_next = (r_reg > delay_input)? 0: r_reg + 1;          // Changed from lecture example == to > so that if delay_input goes lower than r_reg
+                                                                  // the count will reset accordingly
     
-    // [3] output logic segment
-    assign q = r_reg;    
-    
-    assign max_tick = (r_reg == M - 1) ? 1'b1: 1'b0;
+    assign delay_tick = (r_reg == delay_input - 1) ? 1'b1: 1'b0;                  
     
 endmodule
